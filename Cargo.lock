@@ -483,6 +483,7 @@ dependencies = [
  "futures",
  "migration",
  "sea-orm 0.9.3",
+ "serde",
  "tokio",
 ]
 

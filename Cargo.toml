@@ -13,3 +13,4 @@ chrono = "0.4.23"
 dotenvy = "0.15.6"
 tokio = { version = "1.25.0", features = ["full"] }
 migration = { path = "./migration" }
+serde = { version = "1.0.152", features = ["serde_derive"] }

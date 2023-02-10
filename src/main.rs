@@ -1,18 +1,21 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use axum::{routing::get, Router};
+use chrono::Utc;
 use dotenvy::dotenv;
 use sea_orm::*;
 use std::env;
 
 mod entities;
+mod handlers;
 
 use entities::{prelude::*, *};
+use handlers::user::UserHandler;
 
-async fn run() -> Result<(), DbErr> {
+async fn run() -> Result<DatabaseConnection, DbErr> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let db_name = env::var("DATABASE_NAME").expect("DATABASE_URL must be set");
     let db = Database::connect(format!("{}/{}", db_url, "postgres")).await?;
 
-    let db = &match db.get_database_backend() {
+    let db = match db.get_database_backend() {
         DbBackend::Postgres => {
             // Check if DB exists before creating, running this in one query does not work with sea_orm
             let existing_db = db.execute(Statement::from_string(
@@ -36,27 +39,21 @@ async fn run() -> Result<(), DbErr> {
         DbBackend::Sqlite => todo!("Implement connection for Sqlite"),
     };
 
-    let new_user = user::ActiveModel {
-        name: ActiveValue::Set("Vilberg".to_owned()),
-        email: ActiveValue::Set("v@example.com".to_owned()),
-        password: ActiveValue::Set("Vilberg".to_owned()),
-        salt: ActiveValue::Set("Vilberg".to_owned()),
-        created_at: ActiveValue::Set(Utc::now().naive_utc()),
-        ..Default::default()
-    };
-
-    let res = User::insert(new_user).exec(db).await?;
-
-    println!("{:?}", res);
-
-    Ok(())
+    Ok(db)
 }
 
 #[tokio::main]
-async fn main() -> Result<(), DbErr> {
+async fn main() {
     dotenv().ok();
 
-    run().await?;
+    let db = run().await.expect("DB Connection failed");
 
-    Ok(())
+    let app = Router::new()
+        .route("/users", get(UserHandler::index))
+        .with_state(db);
+
+    axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .expect("Server Crashed")
 }
