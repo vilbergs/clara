@@ -1,14 +1,14 @@
-use axum::{routing::get, Router};
-use chrono::Utc;
+use axum::{routing::get, routing::post, Router};
 use dotenvy::dotenv;
 use sea_orm::*;
 use std::env;
 
+mod auth;
 mod entities;
 mod handlers;
+mod middleware;
 
-use entities::{prelude::*, *};
-use handlers::user::UserHandler;
+use handlers::user as UserHandler;
 
 async fn run() -> Result<DatabaseConnection, DbErr> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -49,7 +49,9 @@ async fn main() {
     let db = run().await.expect("DB Connection failed");
 
     let app = Router::new()
-        .route("/users", get(UserHandler::index))
+        .route("/users", get(UserHandler::index).post(UserHandler::store))
+        .route("/users/:id", get(UserHandler::show))
+        .route("/oauth/token", post(UserHandler::token))
         .with_state(db);
 
     axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())

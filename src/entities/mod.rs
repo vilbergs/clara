@@ -2,4 +2,6 @@
 
 pub mod prelude;
 
+pub mod category;
+pub mod transaction;
 pub mod user;
